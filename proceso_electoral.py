@@ -16,6 +16,9 @@ import heapq
 from collections import deque
 
 N = 5
+EDAD_MIN = 18
+EDAD_MAX = 90
+EDAD_PRIORIDAD = 65
 random.seed(10)
 
 # Recursos disponibles
@@ -39,7 +42,7 @@ class Votante:
         self.estado = "En camino"
         self.llegada = 0
         self.salida = 0
-        self.edad = random.randint(18, 90)
+        self.edad = random.randint(EDAD_MIN, EDAD_MAX)
 
      #El votante al llegar decide formarse y esperar, ó marcharse
     def decidir_formarse(self, personas_en_fila):
@@ -55,13 +58,24 @@ class Votante:
 
         if numero < probabilidad:
             return "Abandonar"
-        elif self.edad >= 65:
-            votante.estado = "Esperando verificación"
-            fila_verificacion.append(votante)
-            return "Formarse"
         else:
             return "Formarse"
         
+    # Esta es nuestra decisión nueva (requisito 1): ceder el lugar en la fila.
+    # Cada persona que ya está formada ve la edad del que llega y su propia posición, y decide si le cede su lugar.
+    # Una persona mayor no le cede su lugar a alguien más joven o de su misma edad.
+    # Entre más joven seas y más atrás estés en la fila, es más probable que cedas.
+    def decidir_ceder(self, recien_llegado, posicion, largo_fila):
+        if self.edad >= EDAD_PRIORIDAD and recien_llegado.edad <= self.edad:
+            return False
+        else:
+            factor_posicion = (posicion + 1) / largo_fila
+            factor_edad = (EDAD_MAX - self.edad) / (EDAD_MAX - EDAD_MIN)
+            probabilidad = factor_edad * factor_posicion
+
+            numero = random.random()
+
+            return numero < probabilidad
 
 # Método independiente del objeto para insertar eventos en heapq
 def nuevo_evento(tiempo, tipo, votante, recurso=-1):
@@ -91,15 +105,28 @@ def llegada_votante(votante, t):
 
     else:
         votante.estado = "Esperando verificación"
-        if (votante.edad >= 65):
-            print(f"{t:3} | Votante mayor de edad {votante.id:02d} "
-                          f"decide formarse")
-            fila_verificacion.appendleft(votante)
+        print(f"{t:3} | Votante {votante.id:02d} ({votante.edad} años) decide formarse")
+
+        # Si llega una persona mayor, recorremos la fila de atrás hacia adelante y cada quien decide si le cede su lugar.
+        # Al primer "no" nos detenemos, no te puedes saltar a alguien que no te dejó pasar.
+        # La acción es meter al votante en la posición a la que llegó.
+        if (votante.edad >= EDAD_PRIORIDAD):
+            largo_fila = len(fila_verificacion)
+            pos = largo_fila
+            for i in range(largo_fila - 1, -1, -1):
+                persona = fila_verificacion[i]
+                ceder = persona.decidir_ceder(votante, i, largo_fila)
+                if ceder:
+                    pos = i
+                    print(f"      Votante {persona.id:02d} ({persona.edad} años) "
+                          f"le cede su lugar a votante {votante.id:02d} ({votante.edad} años)")
+                else:
+                    print(f"      Votante {persona.id:02d} ({persona.edad} años) "
+                          f"no le cede su lugar a votante {votante.id:02d} ({votante.edad} años)")
+                    break
+            fila_verificacion.insert(pos, votante)
         else:
             fila_verificacion.append(votante)
-
-        print(f"{t:3} | Votante {votante.id:02d} "
-              f"decide formarse")
 
         # Asigna al votante un tiempo para verificar y lo asigna al primer verificador libre
         # Ustedes pueden dejar al votante que decida con que verificador va (en caso de haber dos disponibles)
