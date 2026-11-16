@@ -19,9 +19,9 @@ N = 5
 EDAD_MIN = 18
 EDAD_MAX = 90
 EDAD_PRIORIDAD = 65
-random.seed(10)
+random.seed()
 
-CANDIDATOS = ["Candidato A", "Candidato B", "Candidato C", "Voto Nulo"] # Lista de candidatos disponibles para la votación
+CANDIDATOS = ["Candidato A", "Candidato B", "Candidato C"] # Lista de candidatos disponibles para la votación
 
 
 class Casilla: # Clase para representar la casilla electoral y llevar el conteo de votos por candidato
@@ -58,7 +58,12 @@ class Votante:
         self.voto = None
 
     def elegir_candidato(self, candidatos):  # Método para elegir un candidato al azar
-        self.voto = random.choice(candidatos)
+        numero = random.random()
+        if(numero < 0.02):
+            self.voto = "Voto Nulo"
+        else:
+            self.voto = random.choice(candidatos)
+
 
      #El votante al llegar decide formarse y esperar, ó marcharse
     def decidir_formarse(self, personas_en_fila):
@@ -324,34 +329,63 @@ while eventos:
         casilla(t)
 
 
+# Estadisticas de votantes
 
+finalizados = 0
+abandonaron = 0
+evacuado = 0 
+no_llegaron = 0
+
+for votante in votantes: 
+    
+    if votante.estado == "Finalizado":
+        finalizados += 1
+    elif votante.estado == "Abandonó":
+        abandonaron += 1
+    elif votante.estado == "Evacuado":
+        evacuado += 1
+    elif votante.estado == "En camino":
+        no_llegaron += 1
+
+print("\nESTADÍSTICAS DE VOTANTES")
+print("total de votantes:", N)
+print("votantes que finalizaron:", finalizados)
+print("votantes que abandonaron:", abandonaron)
+print("votantes evacuados:", evacuado)
+print("votantes que no llegaron:", no_llegaron)
 
 # RESULTADOS
 print("\nRESULTADOS")
 
-for votante in votantes:
-    permanencia = votante.salida - votante.llegada
+tiempo_total = 0 
+votantes_atendidos = 0
 
-    print(f"Votante {votante.id:02d}: "
-          f"{permanencia} minutos")
+for votante in votantes: 
+    if votante.estado == "Finalizado":
+        tiempo_total += votante.salida - votante.llegada
+        votantes_atendidos += 1
 
-promedio = sum(
-    v.salida - v.llegada for v in votantes
-) / N
-
-print(f"\nTiempo promedio: {promedio:.2f} minutos")
-
+if votantes_atendidos > 0: 
+    promedio = tiempo_total / votantes_atendidos
+else: 
+    promedio = 0
+print(f"Votantes Atendidos: {votantes_atendidos}")
+print(f"\nTiempo Promedio: {promedio:.2f} minutos")
 # CONTEO DE VOTOS
 print("\nCONTEO DE VOTOS POR CASILLA")
 conteo_total = {candidato: 0 for candidato in CANDIDATOS}
 
+totalnumerodevotosnulos = 0 
 for c in casillas:
     print(f"Casilla {c.id}:")
     for candidato, cantidad in c.votos.items():
         print(f"  {candidato}: {cantidad} votos")
         conteo_total[candidato] += cantidad
+        totalnumerodevotosnulos += cantidad
 
 total_votos = sum(conteo_total.values())
+votos_nulos = finalizados - totalnumerodevotosnulos
+
 
 print("\nRESULTADO GENERAL")
 for candidato, cantidad in conteo_total.items():
@@ -359,3 +393,5 @@ for candidato, cantidad in conteo_total.items():
     print(f"  {candidato}: {cantidad} votos ({porcentaje:.1f}%)")
 
 print(f"\nTotal de votos depositados: {total_votos} de {N} votantes")
+print(f"Total de votos nulos: {votos_nulos}")
+print(f"Total de votos: {total_votos + votos_nulos}")
