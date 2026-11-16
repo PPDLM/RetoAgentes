@@ -1,5 +1,5 @@
-""" Este script solo considera cuando llegan los votantes, la etapa de verificación en lista nominal y """
-""" pasar a la mampara """
+""" Este script considera la llegada de los votantes, la verificación en lista nominal, la mampara, """
+""" el depósito del voto en la urna, el conteo de votos (incluyendo nulos) y un evento externo (terremoto) """
 
 # Los eventos representan las acciones o cambios de estado que ocurren durante la simulación
 # del proceso electoral.
@@ -8,8 +8,6 @@
 # Los eventos se administran mediante una cola de prioridad (heapq), que permite procesarlos en orden cronológico.
 # Al ejecutarse un evento, se actualiza el estado del votante, se asignan o liberan los recursos correspondientes
 #(verificadores o mamparas) y, cuando es necesario, se generan nuevos eventos que se incorporan a la cola de prioridad.
-
-# TODO: Falta conteo de votos, candidatos; en casilla se van incrementando los votos, no es un agente sino un objeto
 
 import random
 import heapq
@@ -375,16 +373,14 @@ print(f"\nTiempo Promedio: {promedio:.2f} minutos")
 print("\nCONTEO DE VOTOS POR CASILLA")
 conteo_total = {candidato: 0 for candidato in CANDIDATOS}
 
-totalnumerodevotosnulos = 0 
 for c in casillas:
     print(f"Casilla {c.id}:")
     for candidato, cantidad in c.votos.items():
         print(f"  {candidato}: {cantidad} votos")
         conteo_total[candidato] += cantidad
-        totalnumerodevotosnulos += cantidad
 
-total_votos = sum(conteo_total.values())
-votos_nulos = finalizados - totalnumerodevotosnulos
+total_votos = sum(conteo_total.values())  # solo votos válidos
+votos_nulos = finalizados - total_votos  # registrar_voto ignora "Voto Nulo", así que son los que faltan
 
 
 print("\nRESULTADO GENERAL")
@@ -392,6 +388,6 @@ for candidato, cantidad in conteo_total.items():
     porcentaje = (cantidad / total_votos * 100) if total_votos > 0 else 0
     print(f"  {candidato}: {cantidad} votos ({porcentaje:.1f}%)")
 
-print(f"\nTotal de votos depositados: {total_votos} de {N} votantes")
+print(f"\nTotal de votos válidos: {total_votos}")
 print(f"Total de votos nulos: {votos_nulos}")
-print(f"Total de votos: {total_votos + votos_nulos}")
+print(f"Total de votos depositados: {total_votos + votos_nulos} de {N} votantes")
