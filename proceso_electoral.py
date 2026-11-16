@@ -21,10 +21,22 @@ EDAD_MAX = 90
 EDAD_PRIORIDAD = 65
 random.seed(10)
 
+CANDIDATOS = ["Candidato A", "Candidato B", "Candidato C", "Voto Nulo"] # Lista de candidatos disponibles para la votación
+
+
+class Casilla: # Clase para representar la casilla electoral y llevar el conteo de votos por candidato
+    def __init__(self, numero, candidatos):
+        self.id = numero
+        self.disponible = True
+        self.votos = {candidato: 0 for candidato in candidatos}
+
+    def registrar_voto(self, candidato): # Método para registrar un voto para un candidato específico
+        if candidato in self.votos:
+            self.votos[candidato] += 1
 # Recursos disponibles
 verificadores = [True] * 3
 mamparas = [True] * 2
-casillas = [True] * 1
+casillas = [Casilla(i + 1, CANDIDATOS) for i in range(1)]
 
 # Filas de espera
 fila_verificacion = deque()
@@ -43,6 +55,10 @@ class Votante:
         self.llegada = 0
         self.salida = 0
         self.edad = random.randint(EDAD_MIN, EDAD_MAX)
+        self.voto = None
+
+    def elegir_candidato(self, candidatos):  # Método para elegir un candidato al azar
+        self.voto = random.choice(candidatos)
 
      #El votante al llegar decide formarse y esperar, ó marcharse
     def decidir_formarse(self, personas_en_fila):
@@ -172,6 +188,8 @@ def mampara(t):
 
             duracion = random.randint(3, 9)
 
+            # El votante elige su candidato en privado dentro de la mampara
+            votante.elegir_candidato(CANDIDATOS)
             # Los eventos 
 
             nuevo_evento(
@@ -183,10 +201,10 @@ def mampara(t):
 
 # EVENTO 4: Ballot box stage
 def casilla(t):
-    for i in range(len(casillas)):
-        if casillas[i] and fila_casilla: # si la casilla está libre y hay votantes esperando
+    for i, c in enumerate(casillas):
+        if c.disponible and fila_casilla: # si la casilla está libre y hay votantes esperando
             votante = fila_casilla.popleft() # extrae el primer votante de la fila
-            casillas[i] = False # la casilla se ocupa
+            c.disponible = False # la casilla se ocupa
             votante.estado = "En casilla" # actualiza el estado del votante
 
             duracion = random.randint(1, 3) # tiempo aleatorio para depositar el voto
@@ -221,10 +239,11 @@ def external_event(t):
     fila_verificacion.clear()
     fila_mampara.clear()
     fila_casilla.clear()
-    for lista in (verificadores, mamparas, casillas):
+    for lista in (verificadores, mamparas): # restaurar los recursos a disponibles
         for i in range(len(lista)):
             lista[i] = True
-
+    for c in casillas: # restaurar las casillas a disponibles
+        c.disponible = True
     eventos.clear()
     
 
@@ -297,7 +316,9 @@ while eventos:
     # El votante termina de depositar su voto en la casilla.
     # Se libera la casilla y el votante sale de la casilla.
     elif tipo == "Casilla":
-        casillas[recurso] = True
+        c = casillas[recurso]
+        c.registrar_voto(votante.voto)  # Incrementa el voto en el objeto Casilla
+        c.disponible = True
         # Una vez depositado el voto, el votante sale de la casilla
         salir(votante, t)
         casilla(t)
@@ -319,3 +340,22 @@ promedio = sum(
 ) / N
 
 print(f"\nTiempo promedio: {promedio:.2f} minutos")
+
+# CONTEO DE VOTOS
+print("\nCONTEO DE VOTOS POR CASILLA")
+conteo_total = {candidato: 0 for candidato in CANDIDATOS}
+
+for c in casillas:
+    print(f"Casilla {c.id}:")
+    for candidato, cantidad in c.votos.items():
+        print(f"  {candidato}: {cantidad} votos")
+        conteo_total[candidato] += cantidad
+
+total_votos = sum(conteo_total.values())
+
+print("\nRESULTADO GENERAL")
+for candidato, cantidad in conteo_total.items():
+    porcentaje = (cantidad / total_votos * 100) if total_votos > 0 else 0
+    print(f"  {candidato}: {cantidad} votos ({porcentaje:.1f}%)")
+
+print(f"\nTotal de votos depositados: {total_votos} de {N} votantes")
