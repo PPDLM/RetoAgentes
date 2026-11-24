@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request
-from proceso_electoral_mesa import ProcesoElectoralModel
+from proceso_electoral_mflask import ProcesoElectoralModel
 
 app = Flask(__name__)
 

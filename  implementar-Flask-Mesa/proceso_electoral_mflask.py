@@ -276,6 +276,7 @@ class ProcesoElectoralModel(mesa.Model):
         edad_min: int = 18,
         edad_max: int = 90,
         edad_prioridad: int = 65,
+        mapa_celdas: dict | None = None,
         rng: int | None = None,
     ):
         # Coordenadas de celdas en el grid de Unity
