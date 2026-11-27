@@ -3,6 +3,21 @@ import json
 import mesa
 from mesa.time import Priority
 
+ESTADOS_UNITY = {
+    "En camino": "en_route",
+    "Esperando verificación": "waiting_verification",
+    "Yendo a verificación": "en_route",
+    "Verificando": "verifying",
+    "Esperando mampara": "waiting_booth",
+    "Yendo a mampara": "en_route",
+    "En mampara": "in_booth",
+    "Esperando casilla": "waiting_ballot_box",
+    "Yendo a casilla": "en_route",
+    "En casilla": "at_ballot_box",
+    "Finalizado": "finished",
+    "Abandonó": "abandoned",
+    "Evacuado": "evacuated",
+}
 
 class Casilla:# Clase para representar la casilla electoral y llevar el conteo de votos por candidato
     """Representa una urna electoral y lleva el conteo de votos válidos."""
@@ -41,6 +56,9 @@ class Votante(mesa.Agent):
 
         self.duracion_pendiente: int = 0
 
+        self.duracion_pendiente: int = 0
+        self.pasos_en_transito: int = 0  # Para timeout de 5 minutos en tránsito
+        self.prioridad: bool = self.edad >= self.model.edad_prioridad
     # --- Helpers de navegación hacia Unity ---
 
     def mover_a(self, celda: list[int] | tuple[int, int]) -> None:
@@ -114,7 +132,7 @@ class Votante(mesa.Agent):
             self.salida = self.model.time
             self.mover_a(self.model.mapa_celdas["salida"])
             self.model.registrar_evento(
-                tipo="Abandono",
+                tipo="abandoned",
                 votante=self,
                 mensaje=f"Votante {self.unique_id:02d} decide abandonar la casilla",
             )
@@ -122,7 +140,7 @@ class Votante(mesa.Agent):
 
         self.estado = "Esperando verificación"
         self.model.registrar_evento(
-            tipo="LlegadaFila",
+            tipo="joined_queue",
             votante=self,
             mensaje=f"Votante {self.unique_id:02d} ({self.edad} años) decide formarse",
         )
@@ -136,6 +154,7 @@ class Votante(mesa.Agent):
                 # Si la persona decide ceder su lugar, actualiza la posición y registra el evento
                 if persona.decidir_ceder(self, i, personas_en_fila):
                     pos = i
+                    tipo="yield_decision"
                     print(
                         f"        Votante {persona.unique_id:02d} ({persona.edad} años) "
                         f"cede su lugar a Votante {self.unique_id:02d} ({self.edad} años)"
@@ -158,6 +177,8 @@ class Votante(mesa.Agent):
         
     #Es el método que arranca el temporizador (schedule_event) únicamente cuando Unity confirma que el avatar ya llegó físicamente al módulo (arrived: true).
     def iniciar_atencion_en_recurso(self) -> None:
+            self.pasos_en_transito = 0
+            station = f"station_{self.recurso_asignado + 1}" if self.recurso_asignado is not None else None
             """Se dispara cuando Unity confirma que el votante llegó físicamente al módulo asignado."""
             if self.estado == "Yendo a verificación":
                 self.estado = "Verificando"
@@ -167,7 +188,7 @@ class Votante(mesa.Agent):
                     after=self.duracion_pendiente,
                 )
                 self.model.registrar_evento(
-                    tipo="InicioVerificacion",
+                    tipo="verification_started",
                     votante=self,
                     recurso=self.recurso_asignado + 1,
                     mensaje=f"Votante {self.unique_id:02d} inicia verificación {self.recurso_asignado + 1}",
@@ -182,7 +203,7 @@ class Votante(mesa.Agent):
                     after=self.duracion_pendiente,
                 )
                 self.model.registrar_evento(
-                    tipo="InicioMampara",
+                    tipo="booth_started",
                     votante=self,
                     recurso=self.recurso_asignado + 1,
                     mensaje=f"Votante {self.unique_id:02d} inicia mampara {self.recurso_asignado + 1}",
@@ -196,7 +217,7 @@ class Votante(mesa.Agent):
                     after=self.duracion_pendiente,
                 )
                 self.model.registrar_evento(
-                    tipo="InicioCasilla",
+                    tipo="deposit_started",
                     votante=self,
                     recurso=self.recurso_asignado + 1,
                     mensaje=f"Votante {self.unique_id:02d} deposita voto en casilla {self.recurso_asignado + 1}",
@@ -245,6 +266,7 @@ class Votante(mesa.Agent):
     def finalizar_casilla(self) -> None:
         self.evento_pendiente = None
         idx = self.recurso_asignado
+        station = f"station_{idx + 1}"
         urna = self.model.casillas[idx]
         urna.registrar_voto(self.voto)
         urna.disponible = True
@@ -254,12 +276,11 @@ class Votante(mesa.Agent):
         self.salida = self.model.time
         self.mover_a(self.model.mapa_celdas["salida"])
         self.model.registrar_evento(
-            tipo="Salida",
+            tipo="vote_counted",
             votante=self,
-            recurso=idx + 1,
+            station_id=station,
             mensaje=f"Votante {self.unique_id:02d} deposita voto y sale de la casilla",
         )
-
         self.model.asignar_casillas()
 
 
@@ -278,6 +299,7 @@ class ProcesoElectoralModel(mesa.Model):
         edad_prioridad: int = 65,
         mapa_celdas: dict | None = None,
         rng: int | None = None,
+        
     ):
         # Coordenadas de celdas en el grid de Unity
         self.mapa_celdas = mapa_celdas or {
@@ -336,6 +358,9 @@ class ProcesoElectoralModel(mesa.Model):
                 "Voto": "voto",
             },
         )
+        self.removed_ids: list[str] = []
+        self.ultima_respuesta_sync: dict | None = None
+        self.arrival_timeout_steps: int = 5
 
         # Crear agentes Votante y programar llegadas
         Votante.create_agents(model=self, n=self.num_votantes)
@@ -353,7 +378,7 @@ class ProcesoElectoralModel(mesa.Model):
         self.schedule_event(
             self.evento_terremoto,
             at=tiempo_terremoto,
-            priority=Priority.HIGH,
+            priority=Priority.LOW,
         )
 
     # =========================================================================
@@ -391,39 +416,44 @@ class ProcesoElectoralModel(mesa.Model):
                 elif votante.estado in ("Finalizado", "Abandonó", "Evacuado"):
                     votante.vivo = False
 
+        # Procesar eventos externos reportados por Unity (salio_del_salon, llego_a_destino, se_atoro, se_abrio_puerta)  
         for ev in payload.get("events", []):
             tipo_ev = ev.get("type") or ev.get("tipo")
             vid = ev.get("agent_id") or ev.get("votante_id")
             votante = agentes_por_id.get(vid) if vid is not None else None
 
-            if tipo_ev == "salio_del_salon" and votante:
+            if tipo_ev == "exited" and votante:
                 votante.vivo = False
                 votante.detener()
                 self.registrar_evento(
-                    tipo="SalioSalon",
+                    tipo="exited",
                     votante=votante,
                     mensaje=f"Votante {votante.unique_id:02d} salió físicamente del salón",
                 )
+                if vid not in self.removed_ids:
+                    self.removed_ids.append(vid)
 
-            elif tipo_ev == "llego_a_destino" and votante:
+            elif tipo_ev == "arrived_at_target" and votante:
                 votante.llego_a_destino = True
                 if votante.estado.startswith("Yendo a "):
                     votante.iniciar_atencion_en_recurso()
                 elif votante.estado in ("Finalizado", "Abandonó", "Evacuado"):
                     votante.vivo = False
+                    if vid not in self.removed_ids:
+                        self.removed_ids.append(vid)
 
-            elif tipo_ev == "se_atoro" and votante:
+            elif tipo_ev == "blocked_physically" and votante:
                 votante.atorado = True
                 self.registrar_evento(
-                    tipo="AgenteAtorado",
+                    tipo="blocked_physically",
                     votante=votante,
                     mensaje=f"ALERTA: Votante {votante.unique_id:02d} reporta atasco en {votante.pos}",
                 )
 
-            elif tipo_ev == "se_abrio_puerta":
+            elif tipo_ev == "door_opened":
                 self.puerta_abierta = True
                 self.registrar_evento(
-                    tipo="PuertaAbierta",
+                    tipo="door_opened",
                     votante=votante,
                     mensaje="Se abrió la puerta de acceso a la casilla",
                 )
@@ -443,7 +473,7 @@ class ProcesoElectoralModel(mesa.Model):
             return
 
         self.current_step += 1
-        self._actualizar_navegacion_filas()
+        self._actualizar_navegacion_filas() # Actualiza celdas destino de quienes esperan en fila y aplica 'hold' si hay congestión
         self.datacollector.collect(self)
 
     def _costo_celda(self, celda: list[int]) -> float:
@@ -451,6 +481,14 @@ class ProcesoElectoralModel(mesa.Model):
         return float(self.crowd_costs.get(clave, 0.0))
 
     def _actualizar_navegacion_filas(self) -> None:
+        # 1. Verificar timeout de traslado (5 minutos)
+        for v in list(self.agents):
+            if v.vivo and v.estado.startswith("Yendo a "):
+                v.pasos_en_transito += 1
+                if v.pasos_en_transito >= self.arrival_timeout_steps:
+                    v.pos = list(v.celda_destino)
+                    v.llego_a_destino = True
+                    v.iniciar_atencion_en_recurso()
         """Actualiza celdas destino de quienes esperan en fila y aplica 'hold' si hay congestión."""
         filas_config = [
             (self.fila_verificacion, self.mapa_celdas["fila_verificacion"]),
@@ -556,6 +594,7 @@ class ProcesoElectoralModel(mesa.Model):
                 v.evento_pendiente = None
             if v.estado == "En camino":
                 v.vivo = False
+                self.removed_ids.append(str(v.unique_id))
 
         # Limpiar filas y liberar recursos
         self.fila_verificacion.clear()
@@ -568,10 +607,17 @@ class ProcesoElectoralModel(mesa.Model):
 
         # Registrar el evento de terremoto en el historial para Unity
         self.registrar_evento(
-            tipo="Terremoto",
+            tipo="external_event",
             votante=None,
-            mensaje="Evacuación total de la casilla por sismo",
+            subtipo="earthquake",
+            mensaje="ALERTA: TERREMOTO - Evacuación total de la casilla",
         )
+        for v in en_sitio:
+            self.registrar_evento(
+                tipo="evacuated",
+                votante=v,
+                mensaje=f"Votante {v.unique_id:02d} evacuado",
+            )
 
     # --- Telemetría y puente hacia Unity ---
 
@@ -582,29 +628,39 @@ class ProcesoElectoralModel(mesa.Model):
         tipo: str,
         votante: Votante | None,
         mensaje: str,
-        recurso: int | None = None,
+        station_id: str | None = None,
+        subtipo: str | None = None,
     ) -> None:
         print(f"[Min {self.time:4.0f}] {mensaje}")
         payload = {
             "tiempo": self.time,
             "tipo": tipo,
-            "votante_id": votante.unique_id if votante else None,
-            "recurso": recurso,
+            "agent_id": votante.unique_id if votante else None,
+            "station_id": station_id,
             "mensaje": mensaje,
         }
+        if subtipo:
+            payload["subtype"] = subtipo
         self.eventos_minuto.append(payload)
         self.historial_unity.append(payload)
 
     def obtener_tally(self) -> dict:
-        conteo = {c: 0 for c in self.candidatos}
+        by_candidate = {c: 0 for c in self.candidatos}
         for urna in self.casillas:
             for candidato, cantidad in urna.votos.items():
-                conteo[candidato] += cantidad
+                by_candidate[candidato] += cantidad
 
         finalizados = len(self.agents.select(lambda v: v.estado == "Finalizado"))
-        total_validos = sum(conteo.values())
-        conteo["Voto Nulo"] = max(0, finalizados - total_validos)
-        return conteo
+        total_validos = sum(by_candidate.values())
+        null_votes = max(0, finalizados - total_validos)
+
+        return {
+            "closed": not self.puerta_abierta,
+            "deposited": finalizados,
+            "valid": total_validos,
+            "null_votes": null_votes,
+            "by_candidate": by_candidate,
+        }
 
     def obtener_estadisticas(self) -> dict:
         grupos = dict(self.agents.groupby("estado"))
@@ -627,25 +683,32 @@ class ProcesoElectoralModel(mesa.Model):
 
     def generar_respuesta_sync(self) -> dict:
         """Genera el payload exacto que devuelve POST /sync a Unity."""
-        votantes_vivos = [
-            {
-                "id": v.unique_id,
-                "estado": v.estado,
-                "orden": v.orden,
-                "celda": v.celda_destino,
-            }
-            for v in self.agents
-            if v.vivo
-        ]
+        agentes_vivos = []
+        for v in self.agents:
+            if not v.vivo:
+                continue
+            agentes_vivos.append({
+                "id": str(v.unique_id),
+                "state": ESTADOS_UNITY.get(v.estado, "en_route"),
+                "command": v.orden,
+                "target_x": v.celda_destino[0],
+                "target_y": v.celda_destino[1],
+                "path": [v.pos, v.celda_destino] if v.orden == "move" else [],
+                "age": v.edad,
+                "priority": v.prioridad,
+            })
 
-        return {
+        respuesta = {
             "step": self.current_step,
             "simulated_time": self.time,
-            "agents": votantes_vivos,
+            "agents": agentes_vivos,
+            "removed": list(self.removed_ids),
             "events": list(self.eventos_minuto),
             "tally": self.obtener_tally(),
             "stats": self.obtener_estadisticas(),
         }
+        self.ultima_respuesta_sync = respuesta
+        return respuesta
 
     def imprimir_resumen(self) -> None: # Imprime un resumen de la simulación, incluyendo estadísticas de votantes, resultados y conteo de votos por casilla
         grupos = dict(self.agents.groupby("estado")) # Agrupa los agentes por su estado actual, 
