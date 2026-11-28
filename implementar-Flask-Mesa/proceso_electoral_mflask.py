@@ -303,14 +303,14 @@ class ProcesoElectoralModel(mesa.Model):
     ):
         # Coordenadas de celdas en el grid de Unity
         self.mapa_celdas = mapa_celdas or {
-            "entrada": [0, 0],
-            "salida": [0, 9],
-            "fila_verificacion": [[2, 1], [2, 2], [2, 3], [2, 4], [2, 5]],
-            "verificadores": [[4, 1], [4, 3], [4, 5]],
-            "fila_mampara": [[6, 2], [6, 3], [6, 4]],
-            "mamparas": [[8, 2], [8, 4]],
-            "fila_casilla": [[10, 2], [10, 3]],
-            "casillas": [[12, 3]],
+            "entrada": [10, 1],
+            "salida": [17, 12],
+            "fila_verificacion": [[10, 4], [10, 3], [10, 2], [9, 2], [8, 2]],
+            "verificadores": [[6, 6], [10, 6], [14, 6]],
+            "fila_mampara": [[9, 10], [9, 9], [9, 8], [9, 7]],
+            "mamparas": [[7, 11], [12, 11]],
+            "fila_casilla": [[15, 10], [14, 10], [13, 10]],
+            "casillas": [[16, 10]],
         }
 
         super().__init__(rng=rng) # Inicializa el modelo con una semilla aleatoria para reproducibilidad
@@ -397,31 +397,50 @@ class ProcesoElectoralModel(mesa.Model):
         agentes_por_id = {v.unique_id: v for v in self.agents}
 
         for info in payload.get("agents", []):
+            # Si Unity envía solo el ID como string o entero en lugar de dict
+            if isinstance(info, (str, int)):
+                vid = str(info)
+                votante = agentes_por_id.get(vid)
+                continue
+
+            if not isinstance(info, dict):
+                continue
             vid = info.get("id")
             votante = agentes_por_id.get(vid)
             if not votante or not votante.vivo:
                 continue
 
-            if "pos" in info:
-                votante.pos = list(info["pos"])
+            # Soporta tanto "pos": [x, y] como "physical_x" / "physical_y"
+            if isinstance(info.get("pos"), (list, tuple)) and len(info["pos"]) >= 2:
+                votante.pos = [int(round(info["pos"][0])), int(round(info["pos"][1]))]
+            elif "physical_x" in info and "physical_y" in info:
+                votante.pos = [int(round(info["physical_x"])), int(round(info["physical_y"]))]
+
             if "stuck" in info:
                 votante.atorado = bool(info["stuck"])
             if "sees" in info:
                 votante.percepcion = info["sees"]
 
-            if info.get("arrived"):
+           # Soporta arrived: true o status == "arrived"
+            ha_llegado = bool(info.get("arrived")) or info.get("status") == "arrived"
+            if ha_llegado:
                 votante.llego_a_destino = True
                 if votante.estado.startswith("Yendo a "):
                     votante.iniciar_atencion_en_recurso()
                 elif votante.estado in ("Finalizado", "Abandonó", "Evacuado"):
                     votante.vivo = False
+                    if vid not in self.removed_ids:
+                        self.removed_ids.append(vid)
 
+        raw_crowd = payload.get("crowd_costs", {})
+        self.crowd_costs = raw_crowd if isinstance(raw_crowd, dict) else {}
         # Procesar eventos externos reportados por Unity (salio_del_salon, llego_a_destino, se_atoro, se_abrio_puerta)  
         for ev in payload.get("events", []):
+            if not isinstance(ev, dict):
+                continue
             tipo_ev = ev.get("type") or ev.get("tipo")
-            vid = ev.get("agent_id") or ev.get("votante_id")
-            votante = agentes_por_id.get(vid) if vid is not None else None
-
+            vid = str(ev.get("agent_id") or ev.get("votante_id")) if (ev.get("agent_id") is not None or ev.get("votante_id") is not None) else None 
+            votante = agentes_por_id.get(vid) if vid else None
             if tipo_ev == "exited" and votante:
                 votante.vivo = False
                 votante.detener()
@@ -464,16 +483,9 @@ class ProcesoElectoralModel(mesa.Model):
 
     def step(self) -> None:
         """Avanza exactamente 1 minuto simulado (eventos DEVS + navegación de filas)."""
-        if not self._en_run_for:
-            self._en_run_for = True
-            try:
-                self.run_for(1)
-            finally:
-                self._en_run_for = False
-            return
-
+        self.run_for(1)
         self.current_step += 1
-        self._actualizar_navegacion_filas() # Actualiza celdas destino de quienes esperan en fila y aplica 'hold' si hay congestión
+        self._actualizar_navegacion_filas()
         self.datacollector.collect(self)
 
     def _costo_celda(self, celda: list[int]) -> float:

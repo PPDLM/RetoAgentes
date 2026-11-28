@@ -1,7 +1,16 @@
 from flask import Flask, jsonify, request
 from flasgger import Swagger
 from proceso_electoral_mflask import ProcesoElectoralModel
+import json
+from pathlib import Path
 
+RUTA_HALL_LAYOUT = Path("hall_layout.json") # Copia Assets/VotingSim/Config/hall_layout.json a la carpeta de Python
+
+def cargar_hall_layout() -> dict:
+    if not RUTA_HALL_LAYOUT.exists():
+        raise FileNotFoundError(f"No se encontró {RUTA_HALL_LAYOUT}")
+    with open(RUTA_HALL_LAYOUT, "r", encoding="utf-8") as f:
+        return json.load(f)
 # INICIALIZACIÓN DE LA APLICACIÓN Y SWAGGER
 app = Flask(__name__)
 # Configuración de la página interactiva de Swagger (http://127.0.0.1:5001/apidocs)
@@ -92,7 +101,7 @@ def init_simulacion():
 
 # Construir el payload inicial adjuntando la topología del salón y metadatos
     respuesta = modelo_actual.generar_respuesta_sync()
-    respuesta["layout"] = modelo_actual.mapa_celdas
+    respuesta["layout"] = cargar_hall_layout()
     respuesta["sim"] = {
         "num_votantes": modelo_actual.num_votantes,
         "candidatos": modelo_actual.candidatos,

@@ -1,0 +1,603 @@
+{
+  "grid": {
+    "width": 20,
+    "height": 14,
+    "cell_size_m": 1.0
+  },
+  "entrance": {
+    "x": 10,
+    "y": 1
+  },
+  "exit": {
+    "x": 17,
+    "y": 12
+  },
+  "doors": [
+    {
+      "id": "D_IN",
+      "x": 10,
+      "y": 0,
+      "facing": "N"
+    },
+    {
+      "id": "D_OUT",
+      "x": 17,
+      "y": 13,
+      "facing": "N"
+    }
+  ],
+  "stations": [
+    {
+      "id": "V1",
+      "kind": "registration",
+      "x": 6,
+      "y": 6,
+      "facing": "N"
+    },
+    {
+      "id": "V2",
+      "kind": "registration",
+      "x": 10,
+      "y": 6,
+      "facing": "N"
+    },
+    {
+      "id": "V3",
+      "kind": "registration",
+      "x": 14,
+      "y": 6,
+      "facing": "N"
+    },
+    {
+      "id": "M1",
+      "kind": "booth",
+      "x": 7,
+      "y": 11,
+      "facing": "N"
+    },
+    {
+      "id": "M2",
+      "kind": "booth",
+      "x": 12,
+      "y": 11,
+      "facing": "N"
+    },
+    {
+      "id": "C1",
+      "kind": "ballot_box",
+      "x": 16,
+      "y": 10,
+      "facing": "E"
+    }
+  ],
+  "queue": {
+    "cells": [
+      [
+        9,
+        10
+      ],
+      [
+        9,
+        9
+      ],
+      [
+        9,
+        8
+      ],
+      [
+        9,
+        7
+      ]
+    ]
+  },
+  "queues": [
+    {
+      "id": "Q_VER",
+      "serves": "registration",
+      "cells": [
+        [
+          10,
+          4
+        ],
+        [
+          10,
+          3
+        ],
+        [
+          10,
+          2
+        ],
+        [
+          9,
+          2
+        ],
+        [
+          8,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "Q_MAM",
+      "serves": "booth",
+      "cells": [
+        [
+          9,
+          10
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          9,
+          8
+        ],
+        [
+          9,
+          7
+        ]
+      ]
+    },
+    {
+      "id": "Q_BOX",
+      "serves": "ballot_box",
+      "cells": [
+        [
+          15,
+          10
+        ],
+        [
+          14,
+          10
+        ],
+        [
+          13,
+          10
+        ]
+      ]
+    }
+  ],
+  "obstacles": [
+    {
+      "x": 0,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 4,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 6,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 9,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 11,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 12,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 13,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 14,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 15,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 16,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 17,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 18,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 0,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 1,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 2,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 3,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 4,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 5,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 6,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 7,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 8,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 9,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 10,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 11,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 12,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 14,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 15,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 16,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 18,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 13,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 4,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 8,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 9,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 10,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 11,
+      "kind": "wall"
+    },
+    {
+      "x": 0,
+      "y": 12,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 1,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 2,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 3,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 4,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 5,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 6,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 7,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 8,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 9,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 10,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 11,
+      "kind": "wall"
+    },
+    {
+      "x": 19,
+      "y": 12,
+      "kind": "wall"
+    },
+    {
+      "x": 4,
+      "y": 4,
+      "kind": "pillar"
+    },
+    {
+      "x": 15,
+      "y": 4,
+      "kind": "pillar"
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "kind": "desk"
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "kind": "desk"
+    },
+    {
+      "x": 14,
+      "y": 7,
+      "kind": "desk"
+    },
+    {
+      "x": 6,
+      "y": 8,
+      "kind": "desk"
+    },
+    {
+      "x": 10,
+      "y": 8,
+      "kind": "desk"
+    },
+    {
+      "x": 14,
+      "y": 8,
+      "kind": "desk"
+    },
+    {
+      "x": 17,
+      "y": 10,
+      "kind": "ballot_box"
+    },
+    {
+      "x": 18,
+      "y": 10,
+      "kind": "ballot_box"
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "kind": "stanchion"
+    },
+    {
+      "x": 9,
+      "y": 3,
+      "kind": "stanchion"
+    },
+    {
+      "x": 8,
+      "y": 3,
+      "kind": "stanchion"
+    },
+    {
+      "x": 8,
+      "y": 9,
+      "kind": "stanchion"
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "kind": "stanchion"
+    },
+    {
+      "x": 13,
+      "y": 11,
+      "kind": "stanchion"
+    },
+    {
+      "x": 14,
+      "y": 11,
+      "kind": "stanchion"
+    },
+    {
+      "x": 15,
+      "y": 11,
+      "kind": "stanchion"
+    }
+  ],
+  "stanchion_lines": [
+    [
+      [
+        9,
+        4
+      ],
+      [
+        9,
+        3
+      ],
+      [
+        8,
+        3
+      ]
+    ],
+    [
+      [
+        8,
+        9
+      ],
+      [
+        8,
+        8
+      ]
+    ],
+    [
+      [
+        13,
+        11
+      ],
+      [
+        14,
+        11
+      ],
+      [
+        15,
+        11
+      ]
+    ]
+  ]
+}
